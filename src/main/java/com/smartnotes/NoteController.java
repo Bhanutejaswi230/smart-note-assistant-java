@@ -14,40 +14,25 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Main API Controller. Handles requests from the frontend,
- * interacts with the database, and calls the Gemini AI.
- */
 @RestController
-@RequestMapping("/api") // Base path for all endpoints in this controller
+@RequestMapping("/api") 
 public class NoteController {
 
     private static final Logger log = LoggerFactory.getLogger(NoteController.class);
-
-    // --- Dependencies (Injected by Spring) ---
     private final NoteRepository noteRepository;
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-
-    // --- Configuration ---
     private final String geminiApiKey = "AIzaSyDNQpVxoJ4_y741QZfI9k2sq8TE33hfLmI"; // Your API Key
     private final String geminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=" + geminiApiKey;
-
-    // --- AI Prompting Configuration ---
-
-    // Define the exact JSON structure the AI MUST return for note processing
     private final AIPayload.GenerationConfig.Schema geminiNoteSchema = new AIPayload.GenerationConfig.Schema(
             "OBJECT",
             Map.of(
                     "topic", Map.of("type", "STRING", "description", "A concise title (5 words max)"),
-                    // **MODIFIED:** Ask for markdown with headings and nested lists
                     "content", Map.of("type", "STRING", "description", "Detailed key points using markdown headings (##) and nested bullet points (- item,   * sub-item)"),
                     "keywords", Map.of("type", "STRING", "description", "A comma-separated string of 5-7 relevant keywords")
             ),
-            List.of("topic", "content", "keywords") // Enforce this order
+            List.of("topic", "content", "keywords") 
     );
-
-    // **UPDATED Instructions for the AI:** Ask for headings and nested bullets
     private final String systemPromptForNoteProcessing =
             "You are a helpful note-taking assistant. " +
                     "Analyze the user's raw text and structure it precisely according to the schema. " +
@@ -56,23 +41,11 @@ public class NoteController {
                     "3. 'keywords': Extract the 5-7 most relevant keywords and return them as a single comma-separated string. " +
                     "Your response MUST be ONLY the valid JSON object conforming to the schema.";
 
-
-    /**
-     * Constructor for Spring dependency injection.
-     */
     public NoteController(NoteRepository noteRepository, WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
         this.noteRepository = noteRepository;
         this.webClient = webClientBuilder.baseUrl("https://generativelanguage.googleapis.com").build();
         this.objectMapper = objectMapper;
     }
-
-    // --- API Endpoints ---
-
-    /**
-     * [AI Processing - Create Note]
-     * Receives raw text, calls Gemini AI to structure it, saves to DB.
-     * URL: POST /api/ai-process
-     */
     @PostMapping("/ai-process")
     public Mono<Note> processNoteWithAI(@RequestBody String rawText) {
         log.info("Received request to AI-process note");
@@ -126,19 +99,12 @@ public class NoteController {
                 });
     }
 
-
-    /**
-     * [Read All Notes] - URL: GET /api/notes
-     */
     @GetMapping("/notes")
     public Iterable<Note> getAllNotes() {
         log.info("Received /notes request");
         return noteRepository.findAll();
     }
 
-    /**
-     * [Delete Note] - URL: DELETE /api/notes/{id}
-     */
     @DeleteMapping("/notes/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteNote(@PathVariable Long id) {
