@@ -3,13 +3,6 @@ package com.bhanu.smartnotes;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
-/**
- * This class represents the JSON response we get *back* from the Gemini API.
- * We only define the fields we care about (candidates -> content -> parts -> text).
- * @JsonIgnoreProperties(ignoreUnknown = true) is very important.
- * It tells Jackson to safely ignore all the extra fields in the AI's
- * response that we don't need (like "promptFeedback").
- */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AIResponse {
 
