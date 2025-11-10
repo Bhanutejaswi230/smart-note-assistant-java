@@ -1,0 +1,45 @@
+plugins {
+	id 'java'
+	// **THE FIX: Using a stable version of Spring Boot**
+	id 'org.springframework.boot' version '3.2.5' 
+	id 'io.spring.dependency-management' version '1.1.5'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+// **THE FIX: The correct, complete dependency list**
+dependencies {
+	// For the REST API (Tomcat Server, Spring MVC)
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	
+	// For the JDBC connection and data repositories
+	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+	
+	// For calling the Gemini AI API (reactive HTTP client)
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	
+	// For parsing JSON from the AI (Gemini) and for the API
+	implementation 'com.fasterxml.jackson.core:jackson-databind'
+	
+	// The H2 in-memory database driver
+	runtimeOnly 'com.h2database:h2'
+
+	// For testing (can be included, not strictly required for app to run)
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'io.projectreactor:reactor-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

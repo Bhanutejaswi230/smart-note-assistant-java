@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Note-Taking Assistant</title>
+    <!-- 1. Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <!-- 2. Custom Styles -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-box { background: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); width: 90%; max-width: 500px; text-align: center; }
+        /* Styling for keywords */
+        .keyword-tag { display: inline-block; background-color: #fef08a; /* Tailwind yellow-200 */ color: #a16207; /* Tailwind yellow-800 */ text-xs font-medium px-2.5 py-0.5 rounded-full mr-1 mb-1;}
+        /* Styling for highlighting */
+        mark { background-color: #fef08a; /* Tailwind yellow-200 */ padding: 0.1em 0.2em; border-radius: 0.2em; }
+        /* Styling for markdown content */
+        .note-content h4.highlighted-heading { background-color: #fef08a; /* Tailwind yellow-200 */ }
+        .note-content h4 { font-size: 1.1em; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; padding: 0.2em 0.4em; border-radius: 0.2em; display: inline-block;} /* ## Heading */
+        .note-content ul { list-style-type: disc; margin-left: 1.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; } /* - Bullet */
+        .note-content ul ul { list-style-type: circle; margin-left: 1.5rem; margin-top: 0.25rem; } /* * Sub-bullet */
+        .note-content li { margin-bottom: 0.25rem; }
+        .note-content p { margin-bottom: 0.5rem; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white text-gray-800 p-6 shadow-md mb-8">
+        <h1 class="text-3xl font-bold text-center flex items-center justify-center gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="text-blue-600" viewBox="0 0 16 16"><path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM5 4h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1zm-.5 2.5A.5.5 0 0 1 5 6h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1-.5-.5zM5 8h6a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1zm0 2h3a.5.5 0 0 1 0 1H5a.5.5 0 0 1 0-1z"/></svg>
+            Smart Note-Taking Assistant
+        </h1>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="container mx-auto p-4 md:px-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+        <!-- Left Column: Input & AI Q&A -->
+        <div class="input-panel bg-white p-6 rounded-lg shadow-lg flex flex-col space-y-6">
+            <!-- Add Note Section -->
+            <div>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-600">Add a New Note</h2>
+                <p class="text-gray-600 mb-4 text-sm">Type your brain-dump below. The AI will create a detailed, structured note with headings, bullet points, and keywords.</p>
+                <textarea id="note-input" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[150px]" placeholder="Paste or type your unstructured text here..."></textarea>
+                <button id="process-note-btn" class="mt-4 w-full bg-blue-600 text-white py-3 px-6 rounded-md font-semibold hover:bg-blue-700 transition duration-300 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M9.5 2.672a.5.5 0 1 0 1 0V.843a.5.5 0 0 0-1 0v1.829Zm4.5.015a.5.5 0 0 0 0-1h-1.829a.5.5 0 1 0 0 1h1.83Z M11.293 4.707a.5.5 0 0 0-.707-.707L9.293 5.293a.5.5 0 0 0 .707.707l1.293-1.293Zm-1.829-.015a.5.5 0 1 0 0-1H7.634a.5.5 0 1 0 0 1h1.83Z M4.707 4.707a.5.5 0 0 0 .707-.707L4.121 2.707a.5.5 0 1 0-.707.707l1.293 1.293Zm-1.829-.015a.5.5 0 1 0 0-1H1.05a.5.5 0 1 0 0 1h1.83Z M7 7.293a.5.5 0 0 0-1 0v1.293a.5.5 0 0 0 1 0V7.293Zm-1.829.015a.5.5 0 1 0 0-1H3.342a.5.5 0 1 0 0 1h1.83Z M12.658 7.308a.5.5 0 1 0 0-1h-1.83a.5.5 0 1 0 0 1h1.83Zm.015 1.829a.5.5 0 1 0 1 0V7.293a.5.5 0 0 0-1 0v1.829ZM10 10.835a.5.5 0 0 0 0 1h1.829a.5.5 0 0 0 0-1H10Zm1.293 1.293a.5.5 0 0 0 .707.707l1.293-1.293a.5.5 0 0 0-.707-.707l-1.293 1.293Z M4.707 12.121a.5.5 0 0 0 .707.707l1.293-1.293a.5.5 0 1 0-.707-.707l-1.293 1.293Zm-1.829-.015a.5.5 0 1 0 0 1H1.05a.5.5 0 1 0 0-1h1.83Z M7 13.842a.5.5 0 0 0-1 0v1.829a.5.5 0 0 0 1 0v-1.83Z"/><path d="M11 6.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm-4-3a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/></svg>
+                    ✨ Smart Process & Add Note
+                </button>
+            </div>
+
+            <!-- AI Q&A Section -->
+            <div class="border-t pt-6">
+                <h2 class="text-2xl font-semibold mb-4 text-purple-600">Ask Your Notes 🧠</h2>
+                <p class="text-gray-600 mb-4 text-sm">Ask a question based on the notes currently displayed on the right. The AI will try to answer using only that context.</p>
+                <textarea id="ai-question-input" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 min-h-[50px]" placeholder="e.g., What decisions were made about the budget?"></textarea>
+                <button id="ask-ai-btn" class="mt-4 w-full bg-purple-600 text-white py-3 px-6 rounded-md font-semibold hover:bg-purple-700 transition duration-300 flex items-center justify-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/></svg>
+                    Ask AI
+                </button>
+                 <div id="ai-answer-display" class="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-md text-sm text-purple-800 hidden">
+                    <h4 class="font-semibold mb-2">AI Answer:</h4>
+                    <p id="ai-answer-text" class="whitespace-pre-wrap"></p>
+                </div>
+            </div>
+
+            <!-- Export Tools Section -->
+            <div class="export-controls mt-auto border-t pt-6">
+                <h3 class="text-lg font-semibold mb-3 text-gray-700">Export Tools</h3>
+                <div class="flex gap-4">
+                    <button id="export-md-btn" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-green-700 transition">Export (Markdown)</button>
+                    <button id="export-json-btn" class="flex-1 bg-gray-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-gray-700 transition">Export (JSON)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Notes List -->
+        <div class="notes-panel bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-600">My Structured Notes</h2>
+            <div id="notes-container" class="space-y-4 h-[75vh] overflow-y-auto pr-2">
+                <p class="no-notes-message text-center text-gray-500 mt-10">Loading notes from server...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Hidden by default) -->
+    <div id="alert-modal" class="modal-overlay hidden"><div class="modal-box"><h3 id="alert-title" class="text-xl font-bold mb-4">Alert</h3><p id="alert-message" class="text-gray-700 mb-6"></p><button id="alert-ok-btn" class="bg-blue-600 text-white py-2 px-6 rounded-md font-semibold hover:bg-blue-700">OK</button></div></div>
+    <div id="confirm-modal" class="modal-overlay hidden"><div class="modal-box"><h3 id="confirm-title" class="text-xl font-bold mb-4">Are you sure?</h3><p id="confirm-message" class="text-gray-700 mb-6">This action cannot be undone.</p><div class="flex justify-center gap-4"><button id="confirm-cancel-btn" class="bg-gray-200 text-gray-800 py-2 px-6 rounded-md font-semibold hover:bg-gray-300">Cancel</button><button id="confirm-delete-btn" class="bg-red-600 text-white py-2 px-6 rounded-md font-semibold hover:bg-red-700">Delete</button></div></div></div>
+    <div id="loading-spinner" class="modal-overlay hidden"><div class="spinner"></div></div>
+    <!-- New modal for AI Answer -->
+    <div id="ai-answer-modal" class="modal-overlay hidden"><div class="modal-box"><h3 class="text-xl font-bold mb-4 text-purple-600">AI Answer</h3><p id="ai-answer-modal-text" class="text-gray-700 mb-6 text-left whitespace-pre-wrap"></p><button id="ai-answer-ok-btn" class="bg-purple-600 text-white py-2 px-6 rounded-md font-semibold hover:bg-purple-700">OK</button></div></div>
+
+    <!-- 3. Main Application JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- Global State ---
+            let notes = []; // Local cache of all notes from backend
+
+            // --- Backend API Configuration ---
+            const backendApiBaseUrl = '/api'; // Relative path for backend calls
+
+            // --- Gemini AI Configuration (for frontend Q&A) ---
+            const geminiApiKey = "AIzaSyDNQpVxoJ4_y741QZfI9k2sq8TE33hfLmI"; // Use the same key as your backend
+            const geminiApiUrl_Frontend = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${geminiApiKey}`;
+
+            // --- DOM Elements ---
+            const noteInput = document.getElementById('note-input');
+            const processBtn = document.getElementById('process-note-btn');
+            const notesContainer = document.getElementById('notes-container');
+            const exportMdBtn = document.getElementById('export-md-btn');
+            const exportJsonBtn = document.getElementById('export-json-btn');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const aiQuestionInput = document.getElementById('ai-question-input');
+            const askAiBtn = document.getElementById('ask-ai-btn');
+            const aiAnswerDisplay = document.getElementById('ai-answer-display');
+            const aiAnswerText = document.getElementById('ai-answer-text');
+
+            // --- Custom Alert/Confirm/Answer Modals ---
+            const alertModal = document.getElementById('alert-modal');
+            const alertTitle = document.getElementById('alert-title');
+            const alertMessage = document.getElementById('alert-message');
+            const alertOkBtn = document.getElementById('alert-ok-btn');
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+            const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+            const aiAnswerModal = document.getElementById('ai-answer-modal');
+            const aiAnswerModalText = document.getElementById('ai-answer-modal-text');
+            const aiAnswerOkBtn = document.getElementById('ai-answer-ok-btn');
+            let confirmResolve = null;
+
+            // --- Utility Functions ---
+            function showCustomAlert(title, message) {
+                alertTitle.textContent = title;
+                alertMessage.textContent = message;
+                alertModal.classList.remove('hidden');
+            }
+            function showCustomConfirm(title, message) {
+                 return new Promise((resolve) => {
+                    confirmResolve = resolve;
+                    confirmModal.querySelector('h3').textContent = title;
+                    confirmModal.querySelector('p').textContent = message;
+                    confirmModal.classList.remove('hidden');
+                });
+            }
+            function showAiAnswerModal(answer) {
+                 aiAnswerModalText.textContent = answer || "The AI couldn't find an answer in your notes.";
+                 aiAnswerModal.classList.remove('hidden');
+            }
+            function showLoading(show) {
+                loadingSpinner.style.display = show ? 'flex' : 'none';
+            }
+            async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+                 for (let i = 0; i < retries; i++) {
+                    try {
+                        const effectiveOptions = { ...options };
+                        if (!effectiveOptions.signal) {
+                           effectiveOptions.signal = AbortSignal.timeout(30000);
+                        }
+                        const response = await fetch(url, effectiveOptions);
+                        if (response.ok) return response;
+                        if (response.status === 429 && i < retries - 1) {
+                            console.warn(`Rate limited. Retrying in ${delay / 1000}s... (${i + 1}/${retries})`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2; continue;
+                        }
+                        const errorData = await response.json().catch(() => ({ message: `HTTP error! status: ${response.status}` }));
+                        const error = new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                        error.response = response; throw error;
+                    } catch (error) {
+                        if (i === retries - 1 || error.name === 'AbortError') {
+                           if (error.name === 'AbortError') { throw new Error(`Request timed out after ${ (options.signal?.timeout || 30000) / 1000 } seconds.`); }
+                           throw error;
+                        }
+                        console.warn(`Fetch failed. Retrying in ${delay / 1000}s... (${i + 1}/${retries})`, error.message);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+                 throw new Error("Fetch failed after multiple retries.");
+             }
+
+            // --- Modal Event Listeners ---
+            alertOkBtn.addEventListener('click', () => alertModal.classList.add('hidden'));
+            confirmCancelBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                if (confirmResolve) confirmResolve(false);
+            });
+            confirmDeleteBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                if (confirmResolve) confirmResolve(true);
+            });
+            aiAnswerOkBtn.addEventListener('click', () => aiAnswerModal.classList.add('hidden'));
+
+            // --- Backend API Functions ---
+             async function loadNotesFromServer() {
+                notesContainer.innerHTML = '<p class="no-notes-message text-center text-gray-500 mt-10">Loading notes from server...</p>';
+                try {
+                    const response = await fetchWithRetry(`${backendApiBaseUrl}/notes`, {});
+                    notes = await response.json();
+                    renderNotes();
+                } catch (error) {
+                    console.error('Error loading notes:', error);
+                    const errorMsg = `Could not load notes from server. Is your Java server running (the 'gradlew bootRun' command)? ${error.message}`;
+                    showCustomAlert('Connection Error', errorMsg);
+                    notesContainer.innerHTML = `<p class="no-notes-message text-center text-red-500 mt-10">${errorMsg}</p>`;
+                }
+            }
+            async function processNoteWithAI(rawText) {
+                if (!rawText.trim()) { showCustomAlert('Input Error', 'Please enter some text to process.'); return; }
+                showLoading(true);
+                try {
+                    const response = await fetchWithRetry(`${backendApiBaseUrl}/ai-process`, {
+                        method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: rawText,
+                    });
+                    const newNote = await response.json();
+                    notes.push(newNote);
+                    renderNotes();
+                    noteInput.value = '';
+                    showCustomAlert('Success!', `Note "${newNote.topic}" processed and saved.`);
+                } catch (error) {
+                    console.error('Error processing note:', error);
+                    let detailedError = `Failed to process note via backend. ${error.message}`;
+                     if (error.response) {
+                         try { const errorData = await error.response.json(); detailedError += ` Server Error: ${errorData.message || error.response.statusText}`; }
+                         catch (parseError) { detailedError += ` Status: ${error.response.status}`; }
+                     }
+                    showCustomAlert('Processing Error', detailedError);
+                } finally { showLoading(false); }
+            }
+            async function deleteNoteFromServer(noteId) {
+                const confirmed = await showCustomConfirm('Delete Note?', 'Are you sure you want to permanently delete this note?');
+                if (!confirmed) return;
+                try {
+                    const response = await fetchWithRetry(`${backendApiBaseUrl}/notes/${noteId}`, { method: 'DELETE' });
+                     if (!response.ok && response.status !== 204) { throw new Error(`Server error: ${response.status} ${response.statusText}`); }
+                    notes = notes.filter(note => note.id !== noteId);
+                    renderNotes();
+                    showCustomAlert('Deleted', 'Note successfully deleted.');
+                } catch (error) { console.error('Error deleting note:', error); showCustomAlert('Error', `Failed to delete note. ${error.message}`); }
+            }
+
+            // --- AI Q&A Function (Frontend Call) ---
+            async function askAiAboutNotes() {
+                 const question = aiQuestionInput.value.trim();
+                 if (!question) { showCustomAlert('Input Error', 'Please type a question about your notes.'); return; }
+                 if (notes.length === 0) { showCustomAlert('No Context', 'There are no notes loaded to ask questions about.'); return; }
+                 if (!geminiApiKey) { showCustomAlert('Configuration Error', 'The Gemini API key is missing in the frontend code.'); return; }
+                 showLoading(true);
+                 aiAnswerDisplay.classList.add('hidden');
+                 const notesContext = notes.map(note => `Note Topic: ${note.topic}\nKeywords: ${note.keywords}\nContent:\n${note.content}\n---`).join('\n\n');
+                 const prompt = `Based *only* on the following collected notes, please answer the user's question concisely. If the answer isn't in the notes, say so.\n\nNOTES:\n${notesContext}\n\nQUESTION:\n${question}\n\nANSWER:`;
+                 const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                 try {
+                    const response = await fetchWithRetry(geminiApiUrl_Frontend, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                     const result = await response.json();
+                     let answer = "Sorry, I couldn't get an answer from the AI.";
+                     if (result.candidates?.[0]?.content?.parts?.[0]?.text) { answer = result.candidates[0].content.parts[0].text; }
+                     else if (result.promptFeedback?.blockReason) { answer = `The request was blocked by the AI for safety reasons: ${result.promptFeedback.blockReason}`; console.warn("AI Q&A request blocked:", result.promptFeedback); }
+                     else { console.warn("Unexpected AI response structure:", result); }
+                     showAiAnswerModal(answer.trim());
+                     aiQuestionInput.value = '';
+                 } catch (error) {
+                     console.error('Error asking AI:', error);
+                     let errorMsg = `Error asking AI: ${error.message}.`;
+                     if (error.message.includes('429')) { errorMsg = "The AI is too busy right now (rate limited). Please try again later."; }
+                     else if (error.message.includes('403')) { errorMsg = "Error asking AI: Permission denied (403). Please check if your API key is correct and has the necessary permissions enabled for the Generative Language API."; }
+                     showCustomAlert('AI Q&A Error', errorMsg);
+                 } finally { showLoading(false); }
+             }
+
+
+            // --- Keyword Highlighting (Revised) ---
+             function highlightKeywords(htmlString, keywords) {
+                if (!keywords || keywords.length === 0 || !htmlString) {
+                    return htmlString;
+                }
+                const validKeywords = keywords.filter(kw => kw && kw.trim().length > 0);
+                if (validKeywords.length === 0) return htmlString;
+                const escapedKeywords = validKeywords.map(kw =>
+                    kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                );
+                const keywordRegex = new RegExp(`\\b(${escapedKeywords.join('|')})\\b`, 'gi');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = htmlString;
+                function traverseTextNodes(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        const text = node.textContent;
+                        const newNodeValue = text.replaceAll(keywordRegex, '<mark>$&</mark>');
+                        if (newNodeValue !== text) {
+                            const fragment = document.createRange().createContextualFragment(newNodeValue);
+                            node.parentNode.replaceChild(fragment, node);
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'MARK' && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+                         Array.from(node.childNodes).forEach(traverseTextNodes);
+                    }
+                }
+                traverseTextNodes(tempDiv);
+                return tempDiv.innerHTML;
+            }
+
+
+            // --- Rendering Functions (Revised Markdown Parser) ---
+             function renderMarkdownContent(markdownContent) {
+                if (!markdownContent || !markdownContent.trim()) return '<p class="text-gray-400 italic">No content.</p>';
+
+                const lines = markdownContent.split('\n');
+                let html = '';
+                const listStack = []; 
+                const getIndentLevel = (line) => line.match(/^(\s*)/)[0].length;
+
+                const closeLists = (targetIndent) => {
+                    // Close lists that are deeper than the current line's indent level
+                    while (listStack.length > 0 && listStack[listStack.length - 1].indent > targetIndent) {
+                        html += `</li></${listStack.pop().tag}>`;
+                    }
+                     // Close the previous list item if we are at the same level
+                    if (listStack.length > 0 && listStack[listStack.length - 1].indent === targetIndent) {
+                         html += `</li>`; // Close previous item
+                    }
+                };
+                
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    const currentIndent = getIndentLevel(line);
+
+                    // Heading
+                    if (trimmedLine.startsWith('## ')) {
+                        closeLists(0); // Close all lists
+                        // Add highlight class to heading
+                        html += `<h4 class="highlighted-heading">${trimmedLine.substring(3).trim()}</h4>`;
+                    }
+                    // Bullet point (handles '-' or '*')
+                    else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+                        const listTag = 'ul';
+                        const itemText = trimmedLine.substring(2).trim();
+
+                        // Close deeper lists if indent decreases
+                        closeLists(currentIndent);
+
+                        // Start new list level if necessary (deeper indent)
+                        if (listStack.length === 0 || currentIndent > listStack[listStack.length - 1].indent) {
+                            html += `<${listTag}>`;
+                            listStack.push({ tag: listTag, indent: currentIndent });
+                        }
+                        
+                        html += `<li>${itemText}`; // Start the list item (don't close </li> yet)
+                    }
+                    // Paragraph (or other non-list, non-heading line)
+                    else {
+                        closeLists(0); // Close all lists before paragraph
+                        if (trimmedLine) {
+                            html += `<p>${trimmedLine}</p>`;
+                        }
+                    }
+                });
+
+                // Close any remaining open lists at the end
+                closeLists(0);
+
+                return html;
+            }
+
+
+            function renderNotes() {
+                notesContainer.innerHTML = '';
+                if (notes.length === 0) { notesContainer.innerHTML = '<p class="no-notes-message text-center text-gray-500 mt-10">No notes found. Add one using the AI processor!</p>'; return; }
+                const sortedNotes = [...notes].sort((a, b) => b.id - a.id);
+                sortedNotes.forEach(note => {
+                    const card = document.createElement('div');
+                    card.className = 'note-card bg-gray-50 border-l-4 border-blue-500 p-4 rounded-md shadow-sm transition-all hover:shadow-md';
+                    card.setAttribute('data-id', note.id);
+                    const keywordsArray = note.keywords ? note.keywords.split(',').map(kw => kw.trim()).filter(Boolean) : [];
+                    const keywordsHtml = keywordsArray.length > 0 ? keywordsArray.map(kw => `<span class="keyword-tag">${kw}</span>`).join('') : '<span class="text-xs text-gray-400">No keywords</span>';
+
+                    // 1. Render markdown content to basic HTML
+                    let contentHtml = renderMarkdownContent(note.content);
+                    // 2. Highlight keywords within the generated HTML
+                    contentHtml = highlightKeywords(contentHtml, keywordsArray);
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="note-topic text-xl font-semibold text-gray-900">${note.topic || 'Untitled Note'}</h3>
+                            <button class="delete-note-btn text-gray-400 hover:text-red-600 font-bold text-2xl leading-none p-1 -mr-1" title="Delete Note">&times;</button>
+                        </div>
+                        <div class="note-meta text-xs text-gray-500 mb-3">Saved: ${note.timestamp ? new Date(note.timestamp).toLocaleString() : 'N/A'}</div>
+                        <div class="note-keywords mb-4">${keywordsHtml}</div>
+                        <div class="note-content text-gray-700 text-sm prose prose-sm max-w-none">
+                            ${contentHtml}
+                        </div>
+                    `;
+                    card.querySelector('.delete-note-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteNoteFromServer(note.id); });
+                    notesContainer.appendChild(card);
+                });
+            }
+
+            // --- Exporting Functions ---
+             function downloadFile(filename, content, type) {
+                const blob = new Blob([content], { type: type });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            }
+            exportMdBtn.addEventListener('click', () => {
+                if (notes.length === 0) { showCustomAlert('No Notes', 'There are no notes to export.'); return; }
+                const sortedNotes = [...notes].sort((a, b) => b.id - a.id);
+                // Export the raw markdown content received from the backend
+                const markdownContent = sortedNotes.map(note =>
+                    `# ${note.topic || 'Untitled Note'}\n\n` +
+                    `**Timestamp:** ${note.timestamp ? new Date(note.timestamp).toLocaleString() : 'N/A'}\n` +
+                    `**Keywords:** ${note.keywords || 'N/A'}\n\n` +
+                    `---\n\n` +
+                    `${(note.content || 'No content.')}\n` // Export raw markdown
+                ).join('\n***\n\n');
+                downloadFile('smart_notes.md', markdownContent, 'text/markdown;charset=utf-8');
+            });
+            exportJsonBtn.addEventListener('click', () => {
+                 if (notes.length === 0) { showCustomAlert('No Notes', 'There are no notes to export.'); return; }
+                const sortedNotes = [...notes].sort((a, b) => b.id - a.id);
+                const jsonContent = JSON.stringify(sortedNotes, null, 2);
+                downloadFile('smart_notes.json', jsonContent, 'application/json');
+            });
+
+
+            // --- Event Listeners ---
+            processBtn.addEventListener('click', () => processNoteWithAI(noteInput.value));
+            askAiBtn.addEventListener('click', askAiAboutNotes);
+
+
+            // --- Initial Load ---
+            loadNotesFromServer();
+        });
+    </script>
+
+</body>
+</html>
