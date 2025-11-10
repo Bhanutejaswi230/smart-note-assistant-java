@@ -1,4 +1,4 @@
-package com.example;
+package com.bhanu.smartnotes;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;

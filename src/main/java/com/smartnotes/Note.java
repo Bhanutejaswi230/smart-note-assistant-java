@@ -1,4 +1,4 @@
-package com.example;
+package com.bhanu.smartnotes;
 
 import org.springframework.data.annotation.Id;
 

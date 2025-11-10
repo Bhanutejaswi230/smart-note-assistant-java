@@ -1,4 +1,4 @@
-package com.example;
+package com.bhanu.smartnotes;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
